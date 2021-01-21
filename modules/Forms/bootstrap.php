@@ -243,9 +243,10 @@ $this->module('forms')->extend([
     'open' => function($name, $options = []) {
 
         $options = array_merge([
-            'id'    => uniqid('form'),
-            'class' => '',
-            'csrf'  => $this->app->hash($name)
+            'id'         => uniqid('form'),
+            'class'      => '',
+            'csrf'       => $this->app->hash($name),
+            'include_js' => true
         ], $options);
 
         $this->app->renderView('forms:views/api/form.php', compact('name', 'options'));
@@ -283,28 +284,18 @@ $this->module('forms')->extend([
 
                 $frm['email_forward'] = implode(',', $filtered_emails);
 
-                // There is an email template available
                 if ($template = $this->app->path("#config:forms/emails/{$form}.php")) {
-
-                    $body = $this->app->renderer->file($template, ['data' => $data, 'frm' => $frm], false);
-
-                // Prepare template manually
+                    $body = $this->app->view($template, ['data' => $data, 'frm' => $frm]);                   // Custom email template
                 } else {
-
-                    $body = [];
-
-                    foreach ($data as $key => $value) {
-                        $body[] = "<b>{$key}:</b>\n<br>";
-                        $body[] = (is_string($value) ? $value:json_encode($value))."\n<br>";
-                    }
-
-                    $body = implode("\n<br>", $body);
+                    $body = $this->app->view("forms:views/api/email.php", ['data' => $data, 'frm' => $frm]); // Default email template
                 }
 
                 $formname = isset($frm['label']) && trim($frm['label']) ? $frm['label'] : $form;
+                $to       = $frm['email_forward'];
+                $subject  = $options['subject'] ?? $this->app->helper('i18n')->getstr("New form data for: %s", [$formname]);
 
                 try {
-                    $response = $this->app->mailer->mail($frm['email_forward'], $options['subject'] ?? "New form data for: {$formname}", $body, $options);
+                    $response = $this->app->mailer->mail($to, $subject, $body, $options);
                 } catch (\Exception $e) {
                     $response = $e->getMessage();
                 }
