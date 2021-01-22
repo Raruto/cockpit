@@ -291,6 +291,9 @@ $this->module('forms')->extend([
                     $body = $this->app->view($template, ['data' => $data, 'frm' => $frm]);
                 }
 
+                // Filter email content
+                $this->app->trigger('forms.submit.email', [$form, &$data, $frm, &$body, &$options]);
+
                 // Fallback to default email template
                 if (empty($body)) {
                     $body = $this->app->view("forms:views/api/email.php", ['data' => $data, 'frm' => $frm]);
